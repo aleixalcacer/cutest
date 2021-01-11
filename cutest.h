@@ -30,13 +30,33 @@
 #define CUTEST_GET_PARAMETER(name, type) \
     type name = * (type *) _cutest_get_parameter(#name)
 
+#define CUTEST_TEST_DATA(sname) \
+    _cutest_param_t sname##_params[_CUTEST_PARAMS_MAX] = {0}; \
+    struct sname##_data
 
-#define CUTEST_RUN(test)                   \
-    do {                                   \
-        int rc = _cutest_run(test, #test); \
-        _cutest_teardown();                \
-        return rc;                         \
-    } while(0)
+#define CUTEST_TEST_SETUP(sname) \
+    void sname##_setup(struct sname##_data *data)
+
+#define CUTEST_TEST_TEARDOWN(sname) \
+    void sname##_teardown(struct sname##_data *data)
+
+#define CUTEST_TEST_TEST(sname)                           \
+    static struct sname##_data test_##sname##_data;  \
+    CUTEST_TEST_SETUP(sname);                        \
+    CUTEST_TEST_TEARDOWN(sname);                     \
+    int sname##_test(struct sname##_data* data);     \
+    int sname##_test(struct sname##_data* data)      \
+
+
+#define CUTEST_TEST_RUN(sname)                           \
+    _cutest_setup();                                     \
+    sname##_setup(&test_##sname##_data);                 \
+    int rc = _cutest_run((int (*)(void *)) sname##_test, \
+                         (void *) &test_##sname##_data,  \
+                         #sname);                        \
+    sname##_teardown(&test_##sname##_data);              \
+    _cutest_teardown();                                  \
+    return rc;
 
 
 #define CUTEST_ASSERT(cond, msg)                                                    \
@@ -47,10 +67,6 @@
         }                                                                           \
     } while(0)
 
-
-void _cutest_parametrize(char* name, void *params, int32_t params_len, int32_t param_size);
-uint8_t *_cutest_get_parameter(char *name);
-int _cutest_run(int (*test)(), char *name);
 
 
 #define _CUTEST_PARAMS_MAX 16
@@ -63,8 +79,8 @@ typedef struct {
     int32_t param_size;
 } _cutest_param_t;
 
-_cutest_param_t _cutest_params[_CUTEST_PARAMS_MAX] = {0};
-int32_t _cutest_params_ind[_CUTEST_PARAMS_MAX] = {0};
+static _cutest_param_t _cutest_params[_CUTEST_PARAMS_MAX] = {0};
+static int32_t _cutest_params_ind[_CUTEST_PARAMS_MAX] = {0};
 
 
 void _cutest_parametrize(char* name, void *params, int32_t params_len, int32_t param_size) {
@@ -81,7 +97,6 @@ void _cutest_parametrize(char* name, void *params, int32_t params_len, int32_t p
     _cutest_params[i].params_len = params_len;
 }
 
-
 uint8_t *_cutest_get_parameter(char *name) {
     int i = 0;
     while(strcmp(_cutest_params[i].name, name) != 0) {
@@ -89,6 +104,14 @@ uint8_t *_cutest_get_parameter(char *name) {
     }
     return _cutest_params[i].params + _cutest_params_ind[i] * _cutest_params[i].param_size;
 }
+
+
+void _cutest_setup() {
+    for (int i = 0; i < _CUTEST_PARAMS_MAX; ++i) {
+        _cutest_params[i].name = NULL;
+    }
+}
+
 
 void _cutest_teardown() {
     int i = 0;
@@ -103,7 +126,7 @@ void _cutest_teardown() {
 char _cutest_error_msg[1024];
 
 
-int _cutest_run(int (*test)(), char *name) {
+int _cutest_run(int (*test)(void *), void *test_data, char *name) {
     int cutest_ok = 0;
     int cutest_failed = 0;
     int cutest_total = 0;
@@ -142,7 +165,7 @@ int _cutest_run(int (*test)(), char *name) {
 
         cutest_total++;
 
-        int rc = test();
+        int rc = test(test_data);
         if (rc == CUNIT_OK) {
             cutest_ok++;
             fprintf(stdout, GREEN "[  OK  ]\n" RESET);
