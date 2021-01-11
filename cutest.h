@@ -34,6 +34,7 @@
 #define CUTEST_RUN(test)                   \
     do {                                   \
         int rc = _cutest_run(test, #test); \
+        _cutest_teardown();                \
         return rc;                         \
     } while(0)
 
@@ -71,8 +72,11 @@ void _cutest_parametrize(char* name, void *params, int32_t params_len, int32_t p
     while(_cutest_params[i].name != NULL) {
         i++;
     }
-    _cutest_params[i].name = name;
-    _cutest_params[i].params = (uint8_t *) params;
+    uint8_t *new_params = malloc(param_size * params_len);
+    char *new_name = strdup(name);
+    memcpy(new_params, params, param_size * params_len);
+    _cutest_params[i].name = new_name;
+    _cutest_params[i].params = new_params;
     _cutest_params[i].param_size = param_size;
     _cutest_params[i].params_len = params_len;
 }
@@ -84,6 +88,15 @@ uint8_t *_cutest_get_parameter(char *name) {
         i++;
     }
     return _cutest_params[i].params + _cutest_params_ind[i] * _cutest_params[i].param_size;
+}
+
+void _cutest_teardown() {
+    int i = 0;
+    while(_cutest_params[i].name != NULL) {
+        free(_cutest_params[i].params);
+        free(_cutest_params[i].name);
+        i++;
+    }
 }
 
 
