@@ -26,12 +26,16 @@
                             sizeof(cutest_##name) / sizeof(type), sizeof(type)); \
     } while(0)
 
+#define CUTEST_PARAMETRIZE2(name, type, params_len, params)                                      \
+    do {                                                                         \
+        type *cutest_##name = params;                                    \
+        _cutest_parametrize(#name, cutest_##name, params_len, sizeof(type)); \
+    } while(0)
 
 #define CUTEST_GET_PARAMETER(name, type) \
     type name = * (type *) _cutest_get_parameter(#name)
 
 #define CUTEST_TEST_DATA(sname) \
-    _cutest_param_t sname##_params[_CUTEST_PARAMS_MAX] = {0}; \
     struct sname##_data
 
 #define CUTEST_TEST_SETUP(sname) \
@@ -59,7 +63,7 @@
     return rc;
 
 
-#define CUTEST_ASSERT(cond, msg)                                                    \
+#define CUTEST_ASSERT(msg, cond)                                                    \
     do {                                                                            \
         if (!(cond)) {                                                              \
             sprintf(_cutest_error_msg, "Error: %s %s:%d", msg, __FILE__, __LINE__); \
@@ -149,15 +153,16 @@ int _cutest_run(int (*test)(void *), void *test_data, char *name) {
 
     char test_name[1024];
     for (int niter = 0; niter < niters; ++niter) {
-        sprintf(test_name, "[%0*d/%d] %s[", (int) floor(log10(niters) + 1), niter + 1,
+        sprintf(test_name, "[%0*d/%d] %s(", (int) floor(log10(niters) + 1), niter + 1,
                                             niters, name);
         for (int i = 0; i < nparams; ++i) {
             _cutest_params_ind[i] = niter / params_strides[i] % _cutest_params[i].params_len;
-            sprintf(test_name, "%s%s%d_", test_name, _cutest_params[i].name,
+            sprintf(test_name, "%s%s[%d], ", test_name, _cutest_params[i].name,
                     _cutest_params_ind[i]);
         }
         test_name[strlen(test_name) - 1] = 0;
-        sprintf(test_name, "%s]", test_name);
+        test_name[strlen(test_name) - 1] = 0;
+        sprintf(test_name, "%s)", test_name);
         if (nparams == 0) {
             test_name[strlen(test_name) - 1] = 0;
         }
@@ -184,5 +189,6 @@ int _cutest_run(int (*test)(void *), void *test_data, char *name) {
 
     return cutest_failed;
 }
+
 
 #endif //CUTEST_CUTEST_H
