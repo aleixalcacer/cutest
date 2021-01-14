@@ -4,7 +4,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include <math.h>
 
 
 #define RED     "\033[31m"      /* Red */
@@ -152,9 +151,11 @@ int _cutest_run(int (*test)(void *), void *test_data, char *name) {
     }
 
     char test_name[1024];
+    int count = 0;
+    int num = niters;
+    do { count++; num /= 10;} while(num != 0);
     for (int niter = 0; niter < niters; ++niter) {
-        sprintf(test_name, "[%0*d/%d] %s(", (int) floor(log10(niters) + 1), niter + 1,
-                                            niters, name);
+        sprintf(test_name, "[%0*d/%d] %s(", count, niter + 1, niters, name);
         for (int i = 0; i < nparams; ++i) {
             _cutest_params_ind[i] = niter / params_strides[i] % _cutest_params[i].params_len;
             sprintf(test_name, "%s%s[%d], ", test_name, _cutest_params[i].name,
